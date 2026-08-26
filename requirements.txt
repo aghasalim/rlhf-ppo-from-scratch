@@ -1,0 +1,10 @@
+# Everything runs on CPU. The models are small on purpose: the object of study is
+# reward overoptimization, which does not need scale to reproduce.
+torch
+numpy
+matplotlib
+pandas
+
+# dev
+pytest
+ruff

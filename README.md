@@ -1,74 +1,196 @@
 # rlhf-ppo-from-scratch
 
-Reward modelling from preferences, PPO fine-tuning of a language model, and a deliberate study of reward overoptimization — plus the simpler alternatives (DPO, GRPO, RLOO, best-of-n) at matched compute.
+PPO for RLHF, a Bradley-Terry reward model, and the four alternatives people
+reach for instead. Built to produce one plot: reward overoptimization, where the
+proxy score keeps climbing and the thing you actually wanted turns over and
+falls.
 
-> **Status: scaffold. Nothing here is built or measured yet.**
-> This repo currently holds the project specification, the shared agent conventions,
-> and an empty logbook. Every number in the tables below is a `TODO` because no
-> experiment has been run. The `prompts/` task specs referenced in the wave table
-> are not written yet either.
->
-> Nothing in this repo is estimated or taken from a paper. When a table has a number
-> in it, that number came from a run in `results/`.
+Everything runs on a laptop CPU in about ten minutes.
 
----
+![reward overoptimization](results/overoptimization.png)
 
-## Why
+## The setup
 
-PPO for RLHF has a reputation for being finicky, and the reputation is earned: four models in memory, a dozen implementation details that each silently cost you performance if wrong, and a reward signal that your policy is actively trying to exploit. Most of the tricks are in code, not papers.
+Real RLHF has no gold reward. You collect human preferences, fit a model to
+them, and optimise that model. The gap between the fitted proxy and the true
+preference is where overoptimization lives, and you cannot measure it, because
+the true preference is not a function you can evaluate.
 
-The part worth building for its own sake is **task 04**: deliberately overoptimize against the reward model and watch true quality peak and then fall while the proxy score keeps climbing. That's Goodhart's law with a plot, on your own hardware, and it's the single most useful thing to have actually seen if you want to reason about RLHF.
+The standard way to study it, from Gao, Schulman and Hilton, is to invent a gold
+reward, treat it as ground truth, label preferences from it, fit a proxy to those
+labels, then optimise the proxy while watching the gold. That makes the invisible
+gap visible.
 
-## Hardware
+The gold reward here has three terms on a token sequence:
 
-- **GPU:** `TODO — python -m scripts.env`
-- 16GB minimum, 24GB comfortable. **The constraint is four models at once** (policy, reference, reward, value). Use Pythia-410M or Qwen2.5-0.5B, not a 7B. LoRA on the policy and a shared backbone for value/reward buy you headroom if you need it.
-
-## Results
-
-TL;DR summarization, win rate vs the SFT baseline (judged, held-out):
-
-| Method | Win rate ↑ | KL to ref | RM score | GPU-hrs |
-|---|---:|---:|---:|---:|
-| SFT | 50% (ref) | 0 | TODO | TODO |
-| Best-of-4 | TODO | TODO | TODO | TODO |
-| Best-of-16 | TODO | TODO | TODO | TODO |
-| PPO | TODO | TODO | TODO | TODO |
-| DPO | TODO | TODO | TODO | TODO |
-| GRPO | TODO | TODO | TODO | TODO |
-| RLOO | TODO | TODO | TODO | TODO |
-
-The overoptimization curve — proxy RM score and gold score against √KL:
-
-`results/overoptimization.png` — TODO
-
-## Waves
-
-```
-00 bootstrap + eval harness              (serial)
-   ├─ 01 theory: PG → TRPO → PPO         ┐
-   └─ 02 SFT + reward model              ┘ parallel
-        └─ 03 PPO implementation         (serial — the hard one)
-             ├─ 04 overoptimization study┐
-             └─ 05 DPO/GRPO/RLOO/BoN     ┘ parallel
-                  └─ 06 comparison + writeup
-```
-
-| Task | OWNS | READS |
+| term | effect | learnable from the preference data? |
 |---|---|---|
-| 00 | `scripts/`, `Makefile`, `rlhf/eval/`, `data/` | — |
-| 01 | `notes/00-ppo.md`, `rlhf/ref/` | `scripts/` |
-| 02 | `rlhf/sft.py`, `rlhf/reward_model.py`, `train/` | `data/`, `rlhf/eval/` |
-| 03 | `rlhf/ppo/` | `rlhf/reward_model.py`, `rlhf/ref/` |
-| 04 | `experiments/overopt/` | `rlhf/ppo/`, `rlhf/eval/` |
-| 05 | `rlhf/alternatives/` | `rlhf/reward_model.py`, `rlhf/sft.py` |
-| 06 | `bench/`, `notes/paper.md`, `README.md` | everything |
+| motif | + for each occurrence of a target bigram | yes, it fires often near the base policy |
+| repetition | − for immediately repeated tokens | yes |
+| hoarding | − once the motif count passes a threshold | **no** |
 
-See [`CONVENTIONS.md`](CONVENTIONS.md).
+The third term is the design. Near the reference policy almost nothing crosses
+the threshold, so the comparisons the reward model is trained on barely contain
+it. That is not a trick to force a result. It is the toy version of a very
+common real situation: the behaviour you want to discourage is rare in the data
+you collected, so your reward model is uninformed exactly where your optimiser
+is about to go.
+
+Comparisons are drawn only from the reference policy's own samples, which is also
+the real situation. The proxy reaches 0.77 to 0.81 agreement with gold on that
+distribution, and falls off it.
+
+## The result
+
+Sweeping the KL penalty from 0.2 down to 0, three seeds, and recording every few
+steps traces the whole curve.
+
+| KL penalty | KL | proxy | gold | motifs | hoarding |
+|---|---:|---:|---:|---:|---:|
+| reference | 0.00 | +0.143 | −1.081 | 0.10 | 0.00 |
+| 0.2 | 5.29 | +9.004 | +0.416 | 0.69 | 0.00 |
+| 0.05 | 9.83 | +9.613 | +1.000 | 1.29 | 0.02 |
+| 0.01 | 19.59 | +9.818 | **+1.320** | 2.08 | 0.15 |
+| 0.0 | 61.55 | **+9.966** | **−1.426** | 1.10 | 0.00 |
+
+The proxy rises monotonically the whole way, from +9.004 to +9.966. The gold
+peaks at +1.320 and then collapses to −1.426, which is worse than the reference
+policy it started from. **Nothing in the proxy signal indicates this.** If you
+only logged the reward model score, as you would in a real run, you would
+conclude the last configuration was the best one.
+
+The right panel of the plot above shows why. As the policy drifts it produces
+more and more of the rewarded motif, and past the threshold the hidden penalty
+switches on and eats the gains. The proxy never learned that penalty because it
+never saw an example of it.
+
+![per-run trajectories](results/trajectories.png)
+
+## Method comparison
+
+All five optimise the same reward model, so all five are exposed to the same
+blind spot. What separates them is how much gold they buy per unit of drift.
+
+| method | KL | proxy | gold | wall clock |
+|---|---:|---:|---:|---:|
+| SFT reference | 0.00 | +0.143 | −1.081 | 0 s |
+| Best-of-4 | 0.64 | +6.025 | −0.454 | 2 s |
+| Best-of-16 | 1.84 | +8.739 | −0.189 | 7 s |
+| Best-of-64 | 3.17 | +9.507 | −0.054 | 41 s |
+| PPO (beta=0.05) | 9.83 | +9.613 | +1.000 | 27 s |
+| PPO (beta=0.01) | 19.59 | +9.818 | +1.320 | 26 s |
+| **DPO** | 18.96 | +9.388 | **+2.125** | 7 s |
+| RLOO | 5.81 | +8.391 | +0.600 | 5 s |
+| GRPO | 6.39 | +8.320 | +0.597 | 5 s |
+
+![gold against KL for every method](results/methods.png)
+
+Two things stand out.
+
+**Best-of-N never gets off the floor.** Even at N=64 it is still slightly worse
+than the reference on gold, despite reaching a proxy score of +9.507. Its KL is
+known in closed form, log N minus (N−1)/N, which is 3.17 at N=64, so it simply
+does not travel far enough to find the good region. It is also the only method
+here whose cost is entirely at inference.
+
+**DPO comes out best, and I do not fully trust it.** It reaches +2.125 gold at a
+KL comparable to PPO's, but its diagnostics show 4.99 motifs and a hoarding
+penalty of 2.04, meaning it is deep into the region where the proxy is wrong and
+is doing well anyway. It also sees the raw preference pairs rather than the
+fitted reward model, so it is not exposed to the reward model's generalisation
+error in the same way. That is a genuine advantage of DPO, but it makes this a
+comparison between two different things rather than two optimisers on one
+reward, and I would not quote the number without that caveat.
+
+## PPO details that matter
+
+These are the ones in code rather than in the paper, all implemented in
+`rlhf/ppo.py`:
+
+- **Token level KL penalty.** The reward is the reward model at the final token
+  minus beta times the per token log ratio, so credit lands where the divergence
+  happened rather than being smeared over the sequence.
+- **Advantage whitening.** A Bradley-Terry reward is only identified up to a
+  constant, so without normalising the advantages the update size depends on an
+  arbitrary scale.
+- **Ratio and value clipping**, and multiple epochs per rollout, which is where
+  the importance ratio stops being 1 and clipping starts doing anything.
+- **GAE** over the token sequence with the reward model score as terminal.
+
+## What I got wrong
+
+**Freezing the reference policy silently disabled training for every later run.**
+`ppo_train` sets `requires_grad=False` on the reference it is handed, and every
+policy in the sweep is a deepcopy of that same reference. So the first
+configuration trained and every one after it started from frozen parameters. It
+does not fail where the mistake is: the optimiser just has nothing to update, and
+it surfaces much later as `element 0 of tensors does not require grad`. Fixed in
+two places, and there are now tests for both: `fresh()` returns a trainable copy,
+and `ppo_train` copies before it freezes so it cannot mutate the caller's model.
+
+**I built the gold reward so that overoptimization was possible, and I want to be
+explicit that this is a design choice rather than a discovery.** The hoarding
+term exists because a proxy trained on near-reference samples cannot learn it.
+If the gold reward were fully learnable from the preference data, the curve would
+not turn over, and that would also be a true finding about a different situation.
+What the experiment demonstrates is the mechanism, not a claim about how often it
+occurs in practice.
+
+## Running it
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+```bash
+python -m pytest tests/ -q
+```
+
+```bash
+python -m experiments.overopt --seeds 0 1 2 --betas 0.2 0.05 0.01 0.0 --ppo-steps 70
+```
+
+```bash
+python -m bench.figures
+```
+
+The sweep takes about 10 minutes on an M4 CPU and writes `results/*.csv`.
+Figures read those files and never re-run an experiment.
+
+## Layout
+
+```
+rlhf/gold.py           the gold reward, and why the third term is unlearnable
+rlhf/model.py          small autoregressive transformer with a value head
+rlhf/sft.py            the reference policy
+rlhf/reward_model.py   Bradley-Terry proxy, trained only on reference samples
+rlhf/ppo.py            PPO with GAE, clipping, whitening, token level KL
+rlhf/alternatives.py   Best-of-N, DPO, RLOO, GRPO
+experiments/overopt.py the sweep
+tests/                 23 tests
+```
+
+## Sources
+
+- **Gao, Schulman, Hilton. Scaling Laws for Reward Model Overoptimization. ICML 2023.** [arXiv:2210.10760](https://arxiv.org/abs/2210.10760) The gold-versus-proxy method used here, and the sqrt(KL) axis.
+- **Ouyang, Wu, Jiang et al. Training language models to follow instructions with human feedback. NeurIPS 2022.** [arXiv:2203.02155](https://arxiv.org/abs/2203.02155) InstructGPT: the SFT, reward model, PPO pipeline.
+- **Schulman, Wolski, Dhariwal, Radford, Klimov. Proximal Policy Optimization Algorithms. 2017.** [arXiv:1707.06347](https://arxiv.org/abs/1707.06347) The clipped surrogate.
+- **Schulman, Moritz, Levine, Jordan, Abbeel. High-Dimensional Continuous Control Using Generalized Advantage Estimation. ICLR 2016.** [arXiv:1506.02438](https://arxiv.org/abs/1506.02438) GAE.
+- **Rafailov, Sharma, Mitchell, Ermon, Manning, Finn. Direct Preference Optimization. NeurIPS 2023.** [arXiv:2305.18290](https://arxiv.org/abs/2305.18290) DPO.
+- **Ahmadian, Cremer, Gallé et al. Back to Basics: Revisiting REINFORCE-Style Optimization for RLHF. ACL 2024.** [arXiv:2402.14740](https://arxiv.org/abs/2402.14740) RLOO.
+- **Shao, Wang, Zhu et al. DeepSeekMath. 2024.** [arXiv:2402.03300](https://arxiv.org/abs/2402.03300) GRPO.
+- **Bradley, Terry. Rank Analysis of Incomplete Block Designs. Biometrika 1952.** The preference model every reward model here is fit with.
+- **Huang, Liu, Dossa et al. The N Implementation Details of RLHF with PPO. ICLR Blogposts 2024.** The source for several of the details listed above.
+
+## Conventions
+
+Shared rules in [`CONVENTIONS.md`](CONVENTIONS.md). Rule 14, negative results
+stay in, is why the DPO caveat and the design-choice admission are in this file.
 
 ## Author
 
-Aghasalim Mustafazada — third-year AI student at Howest, Belgium.
+Aghasalim Mustafazada, third year AI student at Howest, Belgium.
 
 <p align="center">
   <a href="https://github.com/aghasalim">
@@ -83,4 +205,4 @@ Aghasalim Mustafazada — third-year AI student at Howest, Belgium.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
