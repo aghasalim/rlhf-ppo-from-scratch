@@ -1,5 +1,10 @@
 # rlhf-ppo-from-scratch
 
+[![ci](https://github.com/aghasalim/rlhf-ppo-from-scratch/actions/workflows/ci.yml/badge.svg)](https://github.com/aghasalim/rlhf-ppo-from-scratch/actions/workflows/ci.yml)
+[![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![results](https://img.shields.io/badge/results-reproducible-1a9850.svg)](results/)
+
 PPO for RLHF, a Bradley-Terry reward model, and the four alternatives people
 reach for instead. Built to produce one plot: reward overoptimization, where the
 proxy score keeps climbing and the thing you actually wanted turns over and

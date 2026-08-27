@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: If you use this work, please cite it as below.
+title: "RLHF and PPO from scratch, with a measured overoptimization curve"
+abstract: "PPO for RLHF with a Bradley-Terry reward model, plus Best-of-N, DPO, RLOO and GRPO, and a direct measurement of reward overoptimization against a known gold reward."
+type: software
+authors:
+  - family-names: Mustafazada
+    given-names: Aghasalim
+    orcid: "https://orcid.org/0009-0001-8746-4582"
+    affiliation: "Howest University of Applied Sciences"
+repository-code: "https://github.com/aghasalim/rlhf-ppo-from-scratch"
+url: "https://aghasalim.github.io/"
+license: MIT
+date-released: "2026-08-27"
+version: "1.0.0"
+keywords:
+  - RLHF
+  - PPO
+  - DPO
+  - reward modelling
+  - reward overoptimization
+  - alignment
