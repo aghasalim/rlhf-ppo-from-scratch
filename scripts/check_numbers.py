@@ -13,6 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     rows = list(csv.DictReader((ROOT / "results" / "methods.csv").open()))
     body = (ROOT / "README.md").read_text()
+    # Detail moved out of the README lives in notes/METHODS.md. A figure quoted
+    # there is still a quoted figure and still has to match its source.
+    _methods = ROOT / "notes" / "METHODS.md"
+    if _methods.exists():
+        body += "\n" + _methods.read_text()
     by: dict[str, list[dict]] = {}
     for r in rows:
         by.setdefault(r["method"], []).append(r)
