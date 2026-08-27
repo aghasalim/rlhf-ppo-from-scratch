@@ -183,9 +183,9 @@ tests/                 23 tests
 - **Bradley, Terry. Rank Analysis of Incomplete Block Designs. Biometrika 1952.** The preference model every reward model here is fit with.
 - **Huang, Liu, Dossa et al. The N Implementation Details of RLHF with PPO. ICLR Blogposts 2024.** The source for several of the details listed above.
 
-## Conventions
+## Methodology
 
-Shared rules in [`CONVENTIONS.md`](CONVENTIONS.md). Rule 14, negative results
+The rules this follows are in [`METHODOLOGY.md`](METHODOLOGY.md). Rule 14, negative results
 stay in, is why the DPO caveat and the design-choice admission are in this file.
 
 ## Author
