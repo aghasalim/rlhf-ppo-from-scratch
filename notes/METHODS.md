@@ -21,7 +21,7 @@ blind spot. What separates them is how much gold they buy per unit of drift.
 | RLOO | 5.81 | +8.391 | +0.600 | 5 s |
 | GRPO | 6.39 | +8.320 | +0.597 | 5 s |
 
-![gold against KL for every method](results/methods.png)
+![gold against KL for every method](../results/methods.png)
 
 Two things stand out.
 

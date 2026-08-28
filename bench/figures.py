@@ -219,6 +219,12 @@ def anim_goodhart(out: Path, frames: int = 84, hold: int = 18, fps: int = 16) ->
     peak = int(np.argmax(med["gold"]))
 
     far = t["sqrt_kl"].max()
+    # The lines are bin medians, so they stop at the last bin centre while the
+    # checkpoints run on to far. Shade the gap and say so, otherwise the end of
+    # the sweep reads as a truncated line rather than as thinning data.
+    last = x[-1]
+    tail = int((t["sqrt_kl"] > last).sum())
+
     fig, ax = plt.subplots(figsize=(7.4, 4.3))
     ax.set_xlim(0, far * 1.03)
     # headroom at the top so the running readout never sits on the proxy line
@@ -227,6 +233,11 @@ def anim_goodhart(out: Path, frames: int = 84, hold: int = 18, fps: int = 16) ->
     ax.set_ylabel("mean reward per 24-token sample")
     titled(ax, "The gold turns over, the proxy does not",
            "one sweep replayed in order of drift: 3 seeds, 4 KL penalties, 180 checkpoints")
+
+    ax.axvspan(last, far * 1.03, color="#f0f0f0", zorder=0)
+    ax.text(last + 0.06, 0.60, f"no median past here\njust {tail} checkpoints",
+            transform=ax.get_xaxis_transform(), fontsize=8.0, color="#777777",
+            ha="left", va="center")
 
     art = {}
     for col, colour, label in (("proxy", PROXY, "proxy reward model"),
@@ -256,7 +267,8 @@ def anim_goodhart(out: Path, frames: int = 84, hold: int = 18, fps: int = 16) ->
             art[col].set_data(cx, cy)
             art[col + "_head"].set_data(cx[-1:], cy[-1:])
         art["vline"].set_xdata([cut, cut])
-        art["readout"].set_text(f"sqrt(KL) = {cut:.1f}")
+        tag = f"\nmedians stop at {last:.1f}" if cut > last else ""
+        art["readout"].set_text(f"sqrt(KL) = {cut:.1f}{tag}")
         if cut >= x[peak]:
             art["peak"].set_data([x[peak]], [med["gold"][peak] + 0.8])
             art["peak_text"].set_text(f"gold peaks here, sqrt(KL) = {x[peak]:.1f}")
