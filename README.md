@@ -64,10 +64,18 @@ policy it started from. **Nothing in the proxy signal indicates this.** If you
 only logged the reward model score, as you would in a real run, you would
 conclude the last configuration was the best one.
 
+![the gold turning over while the proxy climbs](results/goodhart.gif)
+
+The same 180 checkpoints as the plot above, replayed in order of how far the
+policy has drifted. The reward model, the gold reward and the reference policy
+are all fixed. The only thing changing is the policy.
+
 The right panel of the plot above shows why. As the policy drifts it produces
 more and more of the rewarded motif, and past the threshold the hidden penalty
 switches on and eats the gains. The proxy never learned that penalty because it
-never saw an example of it.
+never saw an example of it. The scatter past sqrt(KL) = 8 is one seed at zero
+KL penalty whose policy has degenerated into repeated tokens and stopped
+producing motifs at all.
 
 ![per-run trajectories](results/trajectories.png)
 
