@@ -42,8 +42,9 @@ you collected, so your reward model is uninformed exactly where your optimiser
 is about to go.
 
 Comparisons are drawn only from the reference policy's own samples, which is also
-the real situation. The proxy reaches 0.77 to 0.81 agreement with gold on that
-distribution, and falls off it.
+the real situation. On that distribution the proxy agrees with gold on 0.68 to
+0.76 of pairs, one value per seed. Off it agreement drops, as low as 0.41 in a
+zero penalty run that has drifted a long way.
 
 ## The result
 
@@ -86,7 +87,7 @@ All five optimise the same reward model, so all five are exposed to the same bli
 
 Full detail in [notes/METHODS.md](notes/METHODS.md#method-comparison).
 ## PPO details that matter
-These are the ones in code rather than in the paper, all implemented in `rlhf/ppo.py`: - **Token level KL penalty.** The reward is the reward model at the final token minus beta times the per token log ratio, so credit lands where the divergence happened rather than being smeared over the sequence.
+**Token level KL penalty.** The reward is the reward model at the final token minus beta times the per token log ratio, so credit lands where the divergence happened rather than being smeared over the sequence. It is in the code rather than in the paper, implemented in `rlhf/ppo.py`.
 
 Full detail in [notes/METHODS.md](notes/METHODS.md#ppo-details-that-matter).
 ## What I got wrong
