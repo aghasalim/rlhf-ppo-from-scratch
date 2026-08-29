@@ -2,8 +2,8 @@
 
 ## 2026-08-26, freezing the reference silently disabled training for every later run
 **Tried:** first sweep over KL penalties. The beta=0.05 run trained fine; the next one crashed.
-**Measured:**`RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn`, raised from backward, several function calls away from the cause.
-**Concluded:**`ppo_train` sets requires_grad=False on the reference policy it is handed, and every policy in the sweep is `deepcopy(ref)`. So after the first run each new policy inherited frozen parameters and had nothing to optimise. Two fixes, both tested: `fresh()` re-enables grad on the copy it returns, and `ppo_train` copies the reference before freezing so it cannot mutate the caller's model. Worth remembering the shape of this failure: mutating an argument is invisible at the call site, and the symptom appeared in a different function on a later iteration.
+**Measured:** `RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn`, raised from backward, several function calls away from the cause.
+**Concluded:** `ppo_train` sets requires_grad=False on the reference policy it is handed, and every policy in the sweep is `deepcopy(ref)`. So after the first run each new policy inherited frozen parameters and had nothing to optimise. Two fixes, both tested: `fresh()` re-enables grad on the copy it returns, and `ppo_train` copies the reference before freezing so it cannot mutate the caller's model. Worth remembering the shape of this failure: mutating an argument is invisible at the call site, and the symptom appeared in a different function on a later iteration.
 
 ## 2026-08-26, the overoptimization curve, three seeds
 **Tried:** swept the KL penalty over 0.2, 0.05, 0.01 and 0, 70 PPO steps each, 3 seeds, recording proxy and gold every 5 steps. 617 s on an M4 CPU.
