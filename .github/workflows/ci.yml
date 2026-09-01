@@ -24,11 +24,7 @@ jobs:
       - name: Check quoted numbers against results/
         run: python scripts/check_numbers.py
       - name: Golden vectors still match rlhf/ppo.py
-        run: |
-          python verify/export_golden.py "$RUNNER_TEMP/golden"
-          for f in gae.csv ppo_inputs.csv ppo_loss.csv; do
-            cmp "verify/golden/$f" "$RUNNER_TEMP/golden/$f"
-          done
+        run: python verify/export_golden.py --check
 
   # Everything the README publishes, recomputed by implementations that share
   # no code with the ones that produced it. See verify/verify.sh.

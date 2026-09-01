@@ -165,21 +165,24 @@ that cannot fail is checking nothing.
 The PPO kernels are checked against golden vectors: `verify/export_golden.py`
 calls `gae`, `shape_rewards` and `clipped_losses` from `rlhf/ppo.py` on fixed
 inputs and writes the outputs to `verify/golden/`, in float64 so a C double and
-a Rust f64 can be held to 1e-12. The cases include the corners, lam=0, lam=1,
-a length one sequence, and minibatches where most ratios fall outside the clip
-range, because a case where nothing clips would pass against an implementation
-that forgot the clip.
+a Rust f64 can be held to 1e-12. The inputs come from a small integer generator
+written out in that file rather than from `torch.randn`, because the torch
+normal sampler does not produce the same bits on an arm64 laptop and an x86_64
+CI runner, which is a thing this work found out the hard way. The cases include
+the corners, lam=0, lam=1, a length one sequence, and minibatches where most
+ratios fall outside the clip range, because a case where nothing clips would
+pass against an implementation that forgot the clip.
 
 | language | what it recomputes | from | measured agreement |
 |---|---|---|---|
 | SQL | the five rows of the table above, as medians over seeds | `results/methods.csv` | all 5 rows reproduced character for character |
-| C | GAE, the token level KL penalty and the clipped surrogate | `verify/golden/` | worst deviation 1.8e-15 on 8 GAE cases and 5 minibatches, tolerance 1e-12 |
-| Rust | the same kernels, with GAE by the closed form rather than the recursion | `verify/golden/` | worst 2.2e-15 on GAE, 1.8e-15 on the surrogate |
+| C | GAE, the token level KL penalty and the clipped surrogate | `verify/golden/` | worst deviation 9.0e-16 over 8 GAE cases and 5 minibatches, tolerance 1e-12 |
+| Rust | the same kernels, with GAE by the closed form rather than the recursion | `verify/golden/` | worst 1.8e-15 on GAE, 2.2e-16 on the surrogate |
 | Rust | the recursion against the closed form on 200000 random sequences | its own xorshift generator | worst relative deviation 6.2e-15 |
 | Go | structure of all 5 CSVs, sweep completeness, and the table again by sorting | `results/`, `verify/golden/` | 33 rows over 11 methods and 3 seeds, 180 checkpoints, all 25 table cells exact |
 | R | the agreement range, the proxy trend and the gold turnover | `results/overopt-curve.csv` | 0.68 to 0.76 reproduced, worst 0.41 reproduced, quadratic term -0.2149 (t = -28.5) |
 | JavaScript | the claims written in words, and the Best-of-N KL in closed form | `results/methods.csv`, `README.md` | log N minus (N-1)/N matches the measured KL to better than 1e-12 for N = 4, 16, 64 |
-| Python | that the golden vectors still regenerate from `rlhf/ppo.py` | `rlhf/ppo.py` | byte identical, or the C and Rust checks are validating stale files |
+| Python | that the golden vectors still regenerate from `rlhf/ppo.py` | `rlhf/ppo.py` | every value reproduced exactly, or the C and Rust checks are validating stale files |
 
 The Rust check is the one Python could not afford. The golden vectors cover
 eight sequences; the random sweep runs the backward recursion and the closed
