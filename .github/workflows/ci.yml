@@ -23,3 +23,41 @@ jobs:
         run: python -m pytest tests/ -q
       - name: Check quoted numbers against results/
         run: python scripts/check_numbers.py
+      - name: Golden vectors still match rlhf/ppo.py
+        run: |
+          python verify/export_golden.py "$RUNNER_TEMP/golden"
+          for f in gae.csv ppo_inputs.csv ppo_loss.csv; do
+            cmp "verify/golden/$f" "$RUNNER_TEMP/golden/$f"
+          done
+
+  # Everything the README publishes, recomputed by implementations that share
+  # no code with the ones that produced it. See verify/verify.sh.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: R
+        run: command -v Rscript || sudo apt-get install -y --no-install-recommends r-base-core
+      - name: Toolchains
+        run: |
+          sqlite3 --version
+          cc --version | head -1
+          go version
+          cargo --version
+          node --version
+          Rscript --version
+      - name: Recompute everything
+        run: ./verify/verify.sh
+      - name: The checks must reject a corrupted results file
+        run: |
+          cp results/methods.csv "$RUNNER_TEMP/methods.csv"
+          # move the median gold of the beta=0.01 sweep, which is the number the
+          # README's headline claim is built on
+          sed -i 's/^1.3201171159744263,/1.4201171159744263,/' results/methods.csv
+          if ./verify/verify.sh; then
+            echo "a corrupted results/methods.csv was accepted, so the checks check nothing"
+            exit 1
+          fi
+          echo "rejected, as it should be"
+          cp "$RUNNER_TEMP/methods.csv" results/methods.csv
+          ./verify/verify.sh

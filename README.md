@@ -84,12 +84,12 @@ producing motifs at all.
 
 Four of the five optimise the same reward model, so four share its blind spot.
 Best-of-N never gets off the floor: at N=64 the proxy reads +9.507 while the
-gold is still -0.054, below the reference it started from, because the closed
-form pins its KL at 3.17. DPO takes the best gold of anything here, +2.125, but
-it fits the raw preference pairs rather than the fitted reward model, so it is
-not carrying the same blind spot and I would not read it as a clean win. RLOO
-and GRPO both stop near +0.60 gold at a KL around 6, short of the +1.320 PPO
-reaches.
+gold is still negative at -0.054, better than the reference it started from but
+short of every PPO run with the penalty on, because the closed form pins its KL
+at 3.17. DPO takes the best gold of anything here, +2.125, but it fits the raw
+preference pairs rather than the fitted reward model, so it is not carrying the
+same blind spot and I would not read it as a clean win. RLOO and GRPO both stop
+near +0.60 gold at a KL around 6, short of the +1.320 PPO reaches.
 
 ![gold against KL for every method](results/methods.png)
 
@@ -147,6 +147,64 @@ python -m bench.figures
 The sweep takes about 10 minutes on an M4 CPU and writes `results/*.csv`.
 Figures read those files and never re-run an experiment.
 
+## Everything here is computed twice
+
+Every number above came out of one implementation. `experiments/overopt.py`
+runs the sweep and writes `results/*.csv`, `bench/figures.py` reads those files
+back, and the README was written from the same output. Nothing checked that any
+of it was right, because everything downstream read the same numbers. An error
+in `rlhf/ppo.py` would show up in the results, the figures and the prose
+together and look perfectly consistent.
+
+So the published numbers are recomputed by implementations that share no code
+with the ones that produced them. `./verify/verify.sh` runs all of them and
+exits non-zero if any two disagree; CI runs it, then corrupts a results file and
+requires the run to fail, then restores it and requires the run to pass. A check
+that cannot fail is checking nothing.
+
+The PPO kernels are checked against golden vectors: `verify/export_golden.py`
+calls `gae`, `shape_rewards` and `clipped_losses` from `rlhf/ppo.py` on fixed
+inputs and writes the outputs to `verify/golden/`, in float64 so a C double and
+a Rust f64 can be held to 1e-12. The cases include the corners, lam=0, lam=1,
+a length one sequence, and minibatches where most ratios fall outside the clip
+range, because a case where nothing clips would pass against an implementation
+that forgot the clip.
+
+| language | what it recomputes | from | measured agreement |
+|---|---|---|---|
+| SQL | the five rows of the table above, as medians over seeds | `results/methods.csv` | all 5 rows reproduced character for character |
+| C | GAE, the token level KL penalty and the clipped surrogate | `verify/golden/` | worst deviation 1.8e-15 on 8 GAE cases and 5 minibatches, tolerance 1e-12 |
+| Rust | the same kernels, with GAE by the closed form rather than the recursion | `verify/golden/` | worst 2.2e-15 on GAE, 1.8e-15 on the surrogate |
+| Rust | the recursion against the closed form on 200000 random sequences | its own xorshift generator | worst relative deviation 6.2e-15 |
+| Go | structure of all 5 CSVs, sweep completeness, and the table again by sorting | `results/`, `verify/golden/` | 33 rows over 11 methods and 3 seeds, 180 checkpoints, all 25 table cells exact |
+| R | the agreement range, the proxy trend and the gold turnover | `results/overopt-curve.csv` | 0.68 to 0.76 reproduced, worst 0.41 reproduced, quadratic term -0.2149 (t = -28.5) |
+| JavaScript | the claims written in words, and the Best-of-N KL in closed form | `results/methods.csv`, `README.md` | log N minus (N-1)/N matches the measured KL to better than 1e-12 for N = 4, 16, 64 |
+| Python | that the golden vectors still regenerate from `rlhf/ppo.py` | `rlhf/ppo.py` | byte identical, or the C and Rust checks are validating stale files |
+
+The Rust check is the one Python could not afford. The golden vectors cover
+eight sequences; the random sweep runs the backward recursion and the closed
+form `A_t = sum_l (gamma lam)^l delta_(t+l)` against each other on 200000 more,
+with lengths from 1 to 40 and lam at both endpoints. Two implementations of one
+recursion do not catch an error in the recursion itself.
+
+The R check is the one nothing else does. `scripts/check_numbers.py` says of
+itself that it checks quoted figures and not claims written in words, so the
+claims written in words are what R and JavaScript test: that the proxy really
+does rise with drift (slope +0.5506, t = 11.2, Spearman rho +0.903), and that
+the gold really does turn over inside the observed range (turning point at
+sqrt(KL) = 3.89, 95% interval 3.57 to 4.41 under a bootstrap that resamples the
+twelve runs as clusters, because fifteen checkpoints from one run are not
+fifteen independent observations).
+
+**This found a real error.** The README said Best-of-64 reached a gold of -0.054,
+"below the reference it started from", and `notes/METHODS.md` said the same. The
+reference gold is -1.081, so Best-of-64 is a full point above it, not below. The
+figure was right and the comparison around it was wrong, which is exactly the
+kind of mistake a check that only looks for quoted digits cannot see. Both
+sentences are fixed, and the JavaScript check now recomputes the comparison
+rather than the number. A second, smaller one: the layout below said `tests/`
+held 23 tests when it holds 35.
+
 ## Layout
 
 ```
@@ -157,7 +215,8 @@ rlhf/reward_model.py   Bradley-Terry proxy, trained only on reference samples
 rlhf/ppo.py            PPO with GAE, clipping, whitening, token level KL
 rlhf/alternatives.py   Best-of-N, DPO, RLOO, GRPO
 experiments/overopt.py the sweep
-tests/                 23 tests
+tests/                 35 tests
+verify/                the same numbers recomputed in six other languages
 ```
 
 ## Sources

@@ -65,6 +65,26 @@ def gae(rewards, values, gamma, lam):
     return adv, adv + values
 
 
+def shape_rewards(kl_tok, scores, kl_beta):
+    """Token level KL penalty, with the reward model score at the final token.
+
+    Kept as its own function because this is the detail the whole experiment
+    turns on, and verify/ recomputes it in other languages from golden vectors.
+    """
+    rewards = -kl_beta * kl_tok
+    rewards[:, -1] = rewards[:, -1] + scores
+    return rewards
+
+
+def clipped_losses(lp, old_lp, adv, v, old_v, ret, clip, vf_clip):
+    """The PPO surrogate and the clipped value loss, for one minibatch."""
+    ratio = (lp - old_lp).exp()
+    pg = -torch.min(ratio * adv, ratio.clamp(1 - clip, 1 + clip) * adv).mean()
+    v_clipped = old_v + (v - old_v).clamp(-vf_clip, vf_clip)
+    vf = 0.5 * torch.max((v - ret) ** 2, (v_clipped - ret) ** 2).mean()
+    return pg, vf
+
+
 def ppo_train(policy: TinyLM, reward_fn, cfg: PPOConfig, ref: TinyLM | None = None):
     """Optimise `policy` against `reward_fn`, kept near `ref` by a KL penalty."""
     torch.manual_seed(cfg.seed)
@@ -86,8 +106,7 @@ def ppo_train(policy: TinyLM, reward_fn, cfg: PPOConfig, ref: TinyLM | None = No
             scores = reward_fn(seq)                       # (batch,), terminal
 
             kl_tok = old_lp - ref_lp                      # per token
-            rewards = -cfg.kl_beta * kl_tok
-            rewards[:, -1] = rewards[:, -1] + scores
+            rewards = shape_rewards(kl_tok, scores, cfg.kl_beta)
             adv, ret = gae(rewards, old_v, cfg.gamma, cfg.lam)
             if cfg.whiten:
                 adv = (adv - adv.mean()) / (adv.std() + 1e-8)
@@ -99,12 +118,8 @@ def ppo_train(policy: TinyLM, reward_fn, cfg: PPOConfig, ref: TinyLM | None = No
             for s in range(0, n, cfg.minibatch):
                 i = perm[s:s + cfg.minibatch]
                 lp, v, ent = token_logprobs(policy, seq[i])
-                ratio = (lp - old_lp[i]).exp()
-                a = adv[i]
-                pg = -torch.min(ratio * a,
-                                ratio.clamp(1 - cfg.clip, 1 + cfg.clip) * a).mean()
-                v_clipped = old_v[i] + (v - old_v[i]).clamp(-cfg.vf_clip, cfg.vf_clip)
-                vf = 0.5 * torch.max((v - ret[i]) ** 2, (v_clipped - ret[i]) ** 2).mean()
+                pg, vf = clipped_losses(lp, old_lp[i], adv[i], v, old_v[i], ret[i],
+                                        cfg.clip, cfg.vf_clip)
                 loss = pg + cfg.vf_coef * vf - cfg.ent_coef * ent.mean()
                 opt.zero_grad(set_to_none=True)
                 loss.backward()

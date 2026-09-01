@@ -1,0 +1,11 @@
+[package]
+name = "ppokernel"
+version = "0.1.0"
+edition = "2021"
+
+# No dependencies on purpose. An independent check that pulls in a crate to do
+# the arithmetic is not independent, and CI should not need a registry.
+[dependencies]
+
+[profile.release]
+opt-level = 3
