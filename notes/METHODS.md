@@ -25,8 +25,9 @@ blind spot. What separates them is how much gold they buy per unit of drift.
 
 Two things stand out.
 
-**Best-of-N never gets off the floor.** Even at N=64 it is still slightly worse
-than the reference on gold, despite reaching a proxy score of +9.507. Its KL is
+**Best-of-N never gets off the floor.** Even at N=64 the gold is still negative
+at −0.054. That is an improvement on the reference, but it is short of every
+PPO run with the penalty on, despite reaching a proxy score of +9.507. Its KL is
 known in closed form, log N minus (N−1)/N, which is 3.17 at N=64, so it simply
 does not travel far enough to find the good region. It is also the only method
 here whose cost is entirely at inference.

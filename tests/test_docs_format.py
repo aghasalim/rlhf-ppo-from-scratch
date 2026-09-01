@@ -14,7 +14,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP = {".venv", ".git", "node_modules", "site-packages"}
+# Caches and build directories hold markdown that is not this repository's
+# prose, and counting it made the test total depend on whether a cache existed.
+SKIP = {".venv", ".git", "node_modules", "site-packages", ".pytest_cache",
+        ".ruff_cache", "target"}
 SEPARATOR = re.compile(r"^[\s:|-]+$")
 EMOJI = re.compile("[\U0001F300-\U0001FAFF☀-➿]")
 

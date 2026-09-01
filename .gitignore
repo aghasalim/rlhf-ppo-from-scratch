@@ -12,3 +12,8 @@ dist/
 
 # results/ is deliberately NOT ignored -- benchmark CSVs are committed so the
 # README tables stay reproducible.
+
+# verify/ build products. The Rust check has no dependencies, so target/ is
+# entirely rebuildable and is never committed.
+verify/*/target/
+verify/**/*.o
