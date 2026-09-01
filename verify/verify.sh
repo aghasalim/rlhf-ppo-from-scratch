@@ -85,17 +85,7 @@ check_python () {
         echo "torch is not importable, so the golden vectors cannot be regenerated"
         return 2
     }
-    "$py" verify/export_golden.py "$tmp/golden" >/dev/null || return 1
-    local bad=0
-    for f in gae.csv ppo_inputs.csv ppo_loss.csv; do
-        if cmp -s "verify/golden/$f" "$tmp/golden/$f"; then
-            printf '  %-16s identical to a fresh export from rlhf/ppo.py\n' "$f"
-        else
-            printf '  %-16s DIFFERS from a fresh export from rlhf/ppo.py\n' "$f"
-            bad=$((bad + 1))
-        fi
-    done
-    [ "$bad" -eq 0 ] || return 1
+    "$py" verify/export_golden.py --check || return 1
 
     # the test count the README publishes
     local want got
