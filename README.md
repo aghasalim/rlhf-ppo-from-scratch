@@ -95,7 +95,8 @@ near +0.60 gold at a KL around 6, short of the +1.320 PPO reaches.
 
 ![gold against KL for every method](results/methods.png)
 
-Full detail in [notes/METHODS.md](notes/METHODS.md#method-comparison).
+Working notes: [notes/METHODS.md](notes/METHODS.md#method-comparison).
+
 ## PPO details that matter
 
 **Token level KL penalty.** The reward is the reward model at the final token
@@ -109,7 +110,8 @@ Bradley-Terry reward is only identified up to a constant, so without it the size
 of the update rides on an arbitrary scale. All four are in the code rather than
 in the paper, in `rlhf/ppo.py`.
 
-Full detail in [notes/METHODS.md](notes/METHODS.md#ppo-details-that-matter).
+Working notes: [notes/METHODS.md](notes/METHODS.md#ppo-details-that-matter).
+
 ## What I got wrong
 
 **Freezing the reference policy silently disabled training for every later
@@ -125,8 +127,11 @@ design choice rather than a discovery.** The hoarding term is there because a
 proxy trained on near-reference samples cannot learn it. A gold reward that was
 fully learnable from the preference data would not turn the curve over. What
 this shows is the mechanism, not a claim about how often it happens in practice.
+Both paragraphs are here because [`METHODOLOGY.md`](METHODOLOGY.md) rule 14 says a
+negative result does not get quietly dropped once it turns inconvenient.
 
-Full detail in [notes/METHODS.md](notes/METHODS.md#what-i-got-wrong).
+Working notes: [notes/METHODS.md](notes/METHODS.md#what-i-got-wrong).
+
 ## Running it
 
 ```bash
@@ -174,26 +179,6 @@ verify/                the same numbers, recomputed independently
 - **Shao, Wang, Zhu et al. DeepSeekMath. 2024.** [arXiv:2402.03300](https://arxiv.org/abs/2402.03300) GRPO.
 - **Bradley, Terry. Rank Analysis of Incomplete Block Designs. Biometrika 1952.** The preference model every reward model here is fit with.
 - **Huang, Liu, Dossa et al. The N Implementation Details of RLHF with PPO. ICLR Blogposts 2024.** The source for several of the details listed above.
-
-## Methodology
-
-The rules this follows are in [`METHODOLOGY.md`](METHODOLOGY.md). Rule 14, negative results
-stay in, is why the DPO caveat and the design-choice admission are in this file.
-
-## Author
-
-Aghasalim Mustafazada, third year AI student at Howest, Belgium.
-
-<p align="center">
-  <a href="https://github.com/aghasalim">
-    <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="github"></a>
-  <a href="https://www.kaggle.com/aghasalimmustafazada">
-    <img src="https://img.shields.io/badge/Kaggle-20BEFF?style=for-the-badge&logo=kaggle&logoColor=white" alt="kaggle"></a>
-  <a href="https://linkedin.com/in/mustafazada">
-    <img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="linkedin"></a>
-  <a href="https://orcid.org/0009-0001-8746-4582">
-    <img src="https://img.shields.io/badge/ORCID-A6CE39?style=for-the-badge&logo=orcid&logoColor=white" alt="orcid"></a>
-</p>
 
 ## License
 
