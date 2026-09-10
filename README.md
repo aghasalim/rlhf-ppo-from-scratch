@@ -154,7 +154,7 @@ python -m bench.figures
 The sweep takes about 10 minutes on an M4 CPU and writes `results/*.csv`.
 Figures read those files and never re-run an experiment.
 Every setting the sweep used, and the line it comes from, is in
-[notes/SWEEP.md](notes/SWEEP.md).
+[notes/PIPELINE.md](notes/PIPELINE.md).
 
 ## Layout
 
