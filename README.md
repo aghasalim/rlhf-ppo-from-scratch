@@ -127,7 +127,7 @@ design choice rather than a discovery.** The hoarding term is there because a
 proxy trained on near-reference samples cannot learn it. A gold reward that was
 fully learnable from the preference data would not turn the curve over. What
 this shows is the mechanism, not a claim about how often it happens in practice.
-Both paragraphs are here because [`METHODOLOGY.md`](METHODOLOGY.md) rule 14 says a
+Both paragraphs are here because [`METHODOLOGY.md`](METHODOLOGY.md) rule 12 says a
 negative result does not get quietly dropped once it turns inconvenient.
 
 Working notes: [notes/METHODS.md](notes/METHODS.md#what-i-got-wrong).
