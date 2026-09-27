@@ -4,6 +4,7 @@
 [![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![results](https://img.shields.io/badge/results-reproducible-1a9850.svg)](results/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23003676.svg)](https://doi.org/10.5281/zenodo.23003676)
 
 PPO for RLHF, a Bradley-Terry reward model, and the four alternatives people
 reach for instead. Built to produce one plot: reward overoptimization, where the
