@@ -88,8 +88,7 @@ Four of the five optimise the same reward model, so four share its blind spot.
 Best-of-N never gets off the floor: at N=64 the proxy reads +9.507 while the
 gold is still negative at -0.054, better than the reference it started from but
 short of every PPO run with the penalty on, because the closed form pins its KL
-at 3.17. DPO takes the best gold of anything here, +2.125, but it fits the raw
-preference pairs instead of the fitted reward model, so it is not carrying the
+at 3.17. DPO takes the best gold of anything here, +2.125, but it fits the raw preference pairs, not the fitted reward model, so it is not carrying the
 same blind spot and I would not read it as a clean win. RLOO and GRPO both stop
 near +0.60 gold at a KL around 6, short of the +1.320 PPO reaches.
 
@@ -100,8 +99,7 @@ Working notes: [notes/METHODS.md](notes/METHODS.md#method-comparison).
 ## PPO details that matter
 
 Token level KL penalty. The reward is the reward model at the final token
-minus beta times the per token log ratio, so credit lands where the divergence
-happened instead of being smeared over the sequence.
+minus beta times the per token log ratio, so credit lands on the token where the divergence happened.
 
 Three more sit next to it: advantage whitening, ratio and value clipping with
 several epochs per rollout, and GAE over the token sequence with the reward
@@ -122,8 +120,7 @@ Nothing fails at the mistake itself; it turns up much later as `element 0 of
 tensors does not require grad`. The fix went into two places and there is a test
 for each.
 
-I built the gold reward so that overoptimization was possible, and that is a
-design choice instead of a discovery. The hoarding term is there because a
+I built the gold reward so that overoptimization was possible, and that is a design choice, not a discovery. The hoarding term is there because a
 proxy trained on near-reference samples cannot learn it. A gold reward that was
 fully learnable from the preference data would not turn the curve over. What
 this shows is the mechanism, not a claim about how often it happens in practice.
