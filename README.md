@@ -105,8 +105,7 @@ Three more sit next to it: advantage whitening, ratio and value clipping with
 several epochs per rollout, and GAE over the token sequence with the reward
 model score as the terminal reward. Whitening is the one I would not drop. A
 Bradley-Terry reward is only identified up to a constant, so without it the size
-of the update rides on an arbitrary scale. All four are in the code, not
-in the paper, in `rlhf/ppo.py`.
+of the update rides on an arbitrary scale. All four are in the code, in `rlhf/ppo.py`.
 
 Working notes: [notes/METHODS.md](notes/METHODS.md#ppo-details-that-matter).
 
@@ -123,7 +122,7 @@ for each.
 I built the gold reward so that overoptimization was possible, and that is a design choice, not a discovery. The hoarding term is there because a
 proxy trained on near-reference samples cannot learn it. A gold reward that was
 fully learnable from the preference data would not turn the curve over. What
-this shows is the mechanism, not a claim about how often it happens in practice.
+this shows is the mechanism; how often it happens in practice is a separate question.
 Both paragraphs are here because [`METHODOLOGY.md`](METHODOLOGY.md) rule 12 says a
 negative result does not get quietly dropped once it turns inconvenient.
 
