@@ -163,6 +163,8 @@ rlhf/reward_model.py   Bradley-Terry proxy, trained only on reference samples
 rlhf/ppo.py            PPO with GAE, clipping, whitening, token level KL
 rlhf/alternatives.py   Best-of-N, DPO, RLOO, GRPO
 experiments/overopt.py the sweep
+bench/                 figures, read from results/*.csv
+scripts/               check_numbers.py, README numbers against results/
 tests/                 23 tests
 verify/                the same numbers, recomputed independently
 ```
