@@ -45,6 +45,7 @@ def count_motif(seq: torch.Tensor) -> torch.Tensor:
 
 
 def count_repeats(seq: torch.Tensor) -> torch.Tensor:
+    """Number of immediately repeated tokens in each row of a (batch, length) tensor."""
     return (seq[:, 1:] == seq[:, :-1]).sum(dim=1).float()
 
 
