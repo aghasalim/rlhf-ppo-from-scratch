@@ -43,7 +43,7 @@ class TinyLM(nn.Module):
     @torch.no_grad()
     def generate(self, n: int, length: int, generator=None, temperature: float = 1.0,
                  prefix: int = 0):
-        """Sample n sequences of `length` tokens, starting from token 0."""
+        """Sample n sequences of `length` tokens from token 0. `prefix` is accepted but unused."""
         idx = torch.zeros(n, 1, dtype=torch.long)
         for _ in range(length - 1):
             logits = self.logits(idx[:, -self.max_len:])[:, -1] / temperature
