@@ -14,7 +14,7 @@ from .model import TinyLM
 
 def base_sequences(n: int, length: int, seed: int = 0) -> torch.Tensor:
     """Samples from a fixed random Markov chain, sharpened so it is not uniform."""
-    g = torch.Generator().manual_seed(1234)
+    g = torch.Generator().manual_seed(1234)  # fixed on purpose: every run shares one chain, `seed` only varies the draws
     trans = (torch.randn(VOCAB, VOCAB, generator=g) * 1.5).softmax(-1)
     gs = torch.Generator().manual_seed(seed)
     out = torch.zeros(n, length, dtype=torch.long)
