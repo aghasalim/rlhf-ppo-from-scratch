@@ -47,6 +47,8 @@ def dpo_train(policy: TinyLM, ref: TinyLM, a, b, a_wins, steps=400, batch=64,
               lr=3e-4, beta=0.1, seed=0):
     """Direct preference optimisation on the same pairs the RM was fit to."""
     torch.manual_seed(seed)
+    # Copy before freezing, as ppo_train does, so the caller's model stays trainable.
+    ref = copy.deepcopy(ref)
     for p in ref.parameters():
         p.requires_grad_(False)
     opt = torch.optim.AdamW(policy.parameters(), lr=lr)
@@ -119,11 +121,12 @@ def grpo_train(policy, ref, reward_fn, steps=60, k=4, batch=64, length=24,
 def fresh(policy: TinyLM) -> TinyLM:
     """A trainable copy of `policy`.
 
-    The requires_grad_(True) is load bearing. `ppo_train` freezes the reference
-    policy it is handed, and every subsequent policy in a sweep is a deepcopy of
-    that same reference, so without this the second run onward starts from
-    frozen parameters. It does not raise where the mistake is made: the optimiser
-    simply has nothing to update and the failure surfaces later as
+    The requires_grad_(True) is a guard. `ppo_train` and `dpo_train` both copy
+    the reference before freezing it, so neither mutates the caller's model any
+    more, but `ppo_train` used to freeze it in place. Every policy in a sweep is
+    a deepcopy of that reference, so the second run onward started from frozen
+    parameters, and it did not raise where the mistake was made: the optimiser
+    simply had nothing to update and the failure surfaced later as
     "element 0 of tensors does not require grad" from the backward call.
     """
     out = copy.deepcopy(policy)
