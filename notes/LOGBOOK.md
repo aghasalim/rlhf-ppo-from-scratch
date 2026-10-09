@@ -14,3 +14,8 @@
 **Tried:** compared PPO against Best-of-N (4, 16, 64), DPO, RLOO and GRPO on the same reward model.
 **Measured:** Best-of-64 reaches +9.507 proxy but only -0.054 gold, still slightly worse than the reference, at an analytic KL of 3.17. DPO reaches +2.125 gold at KL 18.96, the best of any method. RLOO and GRPO land near +0.60 at KL around 6.
 **Concluded:** Best-of-N simply does not travel far enough; its KL is bounded by log N - (N-1)/N so N=64 buys 3.17 nats and the good region starts further out. The DPO number I do not fully trust and said so in the README: its diagnostics show 4.99 motifs and 2.04 hoarding penalty, so it is deep in the region where the proxy is wrong and doing well anyway. It also trains on the raw preference pairs rather than the fitted reward model, so it never sees that model's generalisation error. That is a real advantage of DPO but it means this is not two optimisers on one reward, and quoting the number without the caveat would be misleading.
+
+## 2026-10-10, dpo_train still froze the reference it was handed
+**Tried:** rereading the `fresh()` docstring against the code after the August fix.
+**Measured:** `ppo_train` already deep-copied the reference before freezing it, but `dpo_train` still set requires_grad=False on its argument in place. The sweep passes it a fresh copy, so no run was affected, but any other caller would have lost a trainable model.
+**Concluded:** `dpo_train` now copies before freezing, the same as `ppo_train`, with a test that the caller's model stays trainable. The `fresh()` docstring described the old `ppo_train` and now says what each function actually does. No numbers change.

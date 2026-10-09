@@ -4,7 +4,7 @@ import math
 import pytest
 import torch
 
-from rlhf.alternatives import analytic_bon_kl, best_of_n, fresh
+from rlhf.alternatives import analytic_bon_kl, best_of_n, dpo_train, fresh
 from rlhf.gold import VOCAB, count_motif, count_repeats, gold_reward
 from rlhf.model import TinyLM, sequence_logprob, token_logprobs
 from rlhf.ppo import PPOConfig, gae, ppo_train, sequence_kl
@@ -134,9 +134,8 @@ def test_best_of_n_picks_the_best_by_the_given_reward():
 
 # --- the bug that actually happened -----------------------------------------
 def test_fresh_returns_a_trainable_copy():
-    """ppo_train freezes the reference it is given, and later policies are
-    deepcopies of that reference. Without re-enabling grad the second run in a
-    sweep silently has nothing to optimise."""
+    """If a reference ever comes back frozen, later policies deepcopied from it
+    would have nothing to optimise. fresh() re-enables grad either way."""
     m = TinyLM(VOCAB)
     for p in m.parameters():
         p.requires_grad_(False)
@@ -149,6 +148,15 @@ def test_ppo_does_not_freeze_the_callers_reference():
     before = [p.requires_grad for p in ref.parameters()]
     ppo_train(pol, lambda s: torch.zeros(s.shape[0]), PPOConfig(steps=1, batch=16, length=8), ref=ref)
     assert [p.requires_grad for p in ref.parameters()] == before
+
+
+def test_dpo_does_not_freeze_the_callers_reference():
+    torch.manual_seed(0)
+    pol, ref = TinyLM(VOCAB), TinyLM(VOCAB)
+    a = torch.randint(0, VOCAB, (8, 6))
+    b = torch.randint(0, VOCAB, (8, 6))
+    dpo_train(pol, ref, a, b, torch.ones(8, dtype=torch.bool), steps=1, batch=4)
+    assert all(p.requires_grad for p in ref.parameters())
 
 
 # --- ppo end to end ---------------------------------------------------------
