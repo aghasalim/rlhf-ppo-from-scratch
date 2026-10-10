@@ -6,30 +6,30 @@
 [![results](https://img.shields.io/badge/results-reproducible-1a9850.svg)](results/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23003676.svg)](https://doi.org/10.5281/zenodo.23003676)
 
-PPO for RLHF, a Bradley-Terry reward model, and the four alternatives people
-reach for instead. Built to produce one plot: reward overoptimization, where the
-proxy score keeps climbing and the thing you actually wanted turns over and
-falls.
+I implemented PPO for RLHF with a Bradley-Terry reward model, plus four
+alternatives people often use instead. Mostly I wanted to reproduce reward
+overoptimization myself. That's when the proxy score keeps going up while the
+thing you actually care about peaks and then falls.
 
-Everything runs on a laptop CPU in about ten minutes. The numbers published
-here are recomputed from `results/` by independent implementations in
-`verify/`, and CI fails the build if any of them disagree.
+Everything runs on a laptop CPU in about ten minutes. I recompute the published
+numbers from `results/` with separate implementations in `verify/`, and CI fails
+the build if any of them disagree.
 
 ![reward overoptimization](results/overoptimization.png)
 
 ## The setup
 
-Real RLHF has no gold reward. You collect human preferences, fit a model to
-them, and optimise that model. The gap between the fitted proxy and the true
-preference is where overoptimization lives, and you cannot measure it, because
-the true preference is not a function you can evaluate.
+In real RLHF there's no gold reward. You collect human preferences, fit a model
+to them and optimise that model. Overoptimization happens in the gap between the
+fitted proxy and the true preference. You can't measure that gap directly, since
+the true preference isn't a function you can evaluate.
 
-The standard way to study it, from Gao, Schulman and Hilton, is to invent a gold
-reward, treat it as ground truth, label preferences from it, fit a proxy to those
-labels, then optimise the proxy while watching the gold. That makes the invisible
-gap visible.
+I followed the approach from Gao, Schulman and Hilton. You make up a gold reward
+and treat it as ground truth. Then you label preferences with it, fit a proxy to
+those labels, and optimise the proxy while keeping an eye on the gold. That way
+the gap becomes something you can see.
 
-The gold reward here has three terms on a token sequence:
+My gold reward scores a token sequence with three terms.
 
 | term | effect | learnable from the preference data? |
 |---|---|---|
@@ -37,22 +37,22 @@ The gold reward here has three terms on a token sequence:
 | repetition | − for immediately repeated tokens | yes |
 | hoarding | − once the motif count passes a threshold | **no** |
 
-The third term is the design. Near the reference policy almost nothing crosses
-the threshold, so the comparisons the reward model is trained on barely contain
-it. That is not a trick to force a result. It is the toy version of a very
-common real situation: the behaviour you want to discourage is rare in the data
-you collected, so your reward model is uninformed exactly where your optimiser
-is about to go.
+I chose the third term on purpose. Near the reference policy almost nothing
+crosses the threshold, so it barely shows up in the comparisons the reward model
+trains on. I think this is a small version of something that happens a lot in
+practice. The behaviour you want to discourage is rare in the data you
+collected, so the reward model knows little about the region the optimiser is
+heading into.
 
-Comparisons are drawn only from the reference policy's own samples, which is also
-the real situation. On that distribution the proxy agrees with gold on 0.68 to
-0.76 of pairs, one value per seed. Off it agreement drops, as low as 0.41 in a
-zero penalty run that has drifted a long way.
+I only draw comparisons from the reference policy's own samples, as you would in
+a real setup. On that distribution the proxy agrees with gold on 0.68 to 0.76 of
+pairs, depending on the seed. Away from it the agreement drops, down to 0.41 in
+a zero penalty run that drifted a long way.
 
 ## The result
 
-Sweeping the KL penalty from 0.2 down to 0, three seeds, and recording every few
-steps traces the whole curve.
+I swept the KL penalty from 0.2 down to 0 over three seeds and logged every few
+steps, which gives the whole curve.
 
 | KL penalty | KL | proxy | gold | motifs | hoarding |
 |---|---:|---:|---:|---:|---:|
@@ -64,33 +64,34 @@ steps traces the whole curve.
 
 The proxy rises monotonically the whole way, from +9.004 to +9.966. The gold
 peaks at +1.320 and then collapses to −1.426, which is worse than the reference
-policy it started from. **Nothing in the proxy signal indicates this.** If you
-only logged the reward model score, as you would in a real run, you would
-conclude the last configuration was the best one.
+policy it started from. You can't see any of this in the proxy. If I had only logged the
+reward model score, like you would in a real run, I'd have picked the last
+configuration as the best one.
 
 ![the gold turning over while the proxy climbs](results/goodhart.gif)
 
-The same 180 checkpoints as the plot above, replayed in order of how far the
-policy has drifted. The reward model, the gold reward and the reference policy
-are all fixed. The only thing changing is the policy.
+These are the same 180 checkpoints as in the plot above, played back in order of
+how far the policy drifted. The reward model, gold reward and reference policy
+stay fixed, and only the policy changes.
 
-The right panel of the plot above shows why. As the policy drifts it produces
-more and more of the rewarded motif, and past the threshold the hidden penalty
-switches on and eats the gains. The proxy never learned that penalty because it
-never saw an example of it. The scatter past sqrt(KL) = 8 is one seed at zero
-KL penalty whose policy has degenerated into repeated tokens and stopped
-producing motifs at all.
+The right panel of the plot above explains it. As the policy drifts it makes more
+and more of the rewarded motif. Past the threshold the hidden penalty kicks in
+and cancels the gains. The proxy never learned that penalty because it never saw
+an example of it. The scatter past sqrt(KL) = 8 comes from one seed at zero KL
+penalty. Its policy collapsed into repeated tokens and stopped producing motifs
+at all.
 
 ![per-run trajectories](results/trajectories.png)
 
 ## Method comparison
 
-Four of the five optimise the same reward model, so four share its blind spot.
-Best-of-N never gets off the floor: at N=64 the proxy reads +9.507 while the
+Four of the five methods optimise the same reward model, so those four share its
+blind spot. Best-of-N barely moves. Even at N=64 the proxy reads +9.507 while the
 gold is still negative at -0.054, better than the reference it started from but
 short of every PPO run with the penalty on, because the closed form pins its KL
-at 3.17. DPO takes the best gold of anything here, +2.125, but it fits the raw preference pairs, not the fitted reward model, so it is not carrying the
-same blind spot and I would not read it as a clean win. RLOO and GRPO both stop
+at 3.17. DPO takes the best gold of anything here, +2.125. It fits the raw
+preference pairs and never uses the fitted reward model, so it doesn't have the
+same blind spot, and I wouldn't count it as a clean win. RLOO and GRPO both stop
 near +0.60 gold at a KL around 6, short of the +1.320 PPO reaches.
 
 ![gold against KL for every method](results/methods.png)
@@ -99,33 +100,35 @@ Working notes: [notes/METHODS.md](notes/METHODS.md#method-comparison).
 
 ## PPO details that matter
 
-Token level KL penalty. The reward is the reward model at the final token
-minus beta times the per token log ratio, so credit lands on the token where the divergence happened.
+I use a token level KL penalty. The reward is the reward model score at the
+final token minus beta times the per token log ratio, so the penalty lands on
+the token where the policy diverged.
 
-Three more sit next to it: advantage whitening, ratio and value clipping with
-several epochs per rollout, and GAE over the token sequence with the reward
-model score as the terminal reward. Whitening is the one I would not drop. A
-Bradley-Terry reward is only identified up to a constant, so without it the size
-of the update rides on an arbitrary scale. All four are in the code, in `rlhf/ppo.py`.
+I also use advantage whitening, ratio and value clipping with several epochs per
+rollout, and GAE over the token sequence with the reward model score as the
+terminal reward. Whitening is the one I'd keep if I had to drop things. A
+Bradley-Terry reward is only defined up to a constant, so without whitening the
+update size depends on an arbitrary scale. All four are in `rlhf/ppo.py`.
 
 Working notes: [notes/METHODS.md](notes/METHODS.md#ppo-details-that-matter).
 
 ## What I got wrong
 
-Freezing the reference policy silently disabled training for every later
-run. `ppo_train` sets `requires_grad=False` on the reference it is handed, and
-every policy in the sweep is a deepcopy of that same reference. The first
-configuration trained and every one after it started from frozen parameters.
-Nothing fails at the mistake itself; it turns up much later as `element 0 of
-tensors does not require grad`. The fix went into two places and there is a test
-for each.
+When I froze the reference policy, I quietly switched off training for every
+run after the first. `ppo_train` sets `requires_grad=False` on the reference it
+gets, and every policy in the sweep is a deepcopy of that same reference. So the
+first configuration trained and all the later ones started from frozen
+parameters. Nothing breaks at the actual mistake. It only shows up much later as
+`element 0 of tensors does not require grad`. I fixed it in two places and added
+a test for each.
 
-I built the gold reward so that overoptimization was possible, and that is a design choice, not a discovery. The hoarding term is there because a
-proxy trained on near-reference samples cannot learn it. A gold reward that was
-fully learnable from the preference data would not turn the curve over. What
-this shows is the mechanism; how often it happens in practice is a separate question.
-Both paragraphs are here because [`METHODOLOGY.md`](METHODOLOGY.md) rule 12 says a
-negative result does not get quietly dropped once it turns inconvenient.
+I also designed the gold reward so that overoptimization could happen, so it's a
+choice I made and not something I discovered. The hoarding term is there because
+a proxy trained on near-reference samples can't learn it. If the gold reward
+were fully learnable from the preference data, the curve wouldn't turn over.
+This repo shows how the mechanism works. How often it happens in practice is a
+different question. I kept both paragraphs because [`METHODOLOGY.md`](METHODOLOGY.md)
+rule 12 says I don't get to quietly drop a negative result when it's inconvenient.
 
 Working notes: [notes/METHODS.md](notes/METHODS.md#what-i-got-wrong).
 
@@ -149,8 +152,8 @@ python -m bench.figures
 ```
 
 The sweep takes about 10 minutes on an M4 CPU and writes `results/*.csv`.
-Figures read those files and never re-run an experiment.
-Every setting the sweep used, and the line it comes from, is in
+The figures only read those files and never re-run an experiment.
+I listed every setting the sweep used, with the line it comes from, in
 [notes/PIPELINE.md](notes/PIPELINE.md).
 
 ## Layout
