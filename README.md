@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/banner.jpg" alt="Line drawing of two curves, one climbing and one that peaks and collapses, beside two cards being compared" width="100%"></p>
+
 # rlhf-ppo-from-scratch
 
 [![ci](https://github.com/aghasalim/rlhf-ppo-from-scratch/actions/workflows/ci.yml/badge.svg)](https://github.com/aghasalim/rlhf-ppo-from-scratch/actions/workflows/ci.yml)
@@ -16,6 +18,22 @@ numbers from `results/` with separate implementations in `verify/`, and CI fails
 the build if any of them disagree.
 
 ![reward overoptimization](results/overoptimization.png)
+
+<details>
+<summary>Contents</summary>
+
+- [The setup](#the-setup)
+- [The result](#the-result)
+- [Method comparison](#method-comparison)
+- [PPO details that matter](#ppo-details-that-matter)
+- [What I got wrong](#what-i-got-wrong)
+- [Running it](#running-it)
+- [Layout](#layout)
+- [Sources](#sources)
+- [Citation](#citation)
+- [License](#license)
+
+</details>
 
 ## The setup
 
@@ -183,6 +201,21 @@ verify/                the same numbers, recomputed independently
 - **Shao, Wang, Zhu et al. DeepSeekMath. 2024.** [arXiv:2402.03300](https://arxiv.org/abs/2402.03300) GRPO.
 - **Bradley, Terry. Rank Analysis of Incomplete Block Designs. Biometrika 1952.** The preference model every reward model here is fit with.
 - **Huang, Liu, Dossa et al. The N Implementation Details of RLHF with PPO. ICLR Blogposts 2024.** The source for several of the details listed above.
+
+## Citation
+
+If you use this work, please cite it. The same record is in [`CITATION.cff`](CITATION.cff).
+
+```bibtex
+@software{mustafazada2026rlhfppofromscratch,
+  author  = {Mustafazada, Aghasalim},
+  title   = {RLHF and PPO from scratch, with a measured overoptimization curve},
+  year    = {2026},
+  version = {1.0.1},
+  doi     = {10.5281/zenodo.23003676},
+  url     = {https://github.com/aghasalim/rlhf-ppo-from-scratch}
+}
+```
 
 ## License
 
