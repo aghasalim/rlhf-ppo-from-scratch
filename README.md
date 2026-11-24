@@ -1,5 +1,3 @@
-<p align="center"><img src="assets/banner.jpg" alt="Line drawing of two curves, one climbing and one that peaks and collapses, beside two cards being compared" width="100%"></p>
-
 # rlhf-ppo-from-scratch
 
 [![ci](https://github.com/aghasalim/rlhf-ppo-from-scratch/actions/workflows/ci.yml/badge.svg)](https://github.com/aghasalim/rlhf-ppo-from-scratch/actions/workflows/ci.yml)
